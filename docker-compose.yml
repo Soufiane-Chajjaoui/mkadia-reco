@@ -1,0 +1,89 @@
+services:
+  # 🔥 Apache Spark Master
+  spark-master:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: spark-master
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "8081:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark/apps:/opt/spark-apps
+      - ./spark/data:/opt/spark-data
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    networks:
+      - mkadia-reco-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 🔥 Spark Worker 1
+  spark-worker-1:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: spark-worker-1
+    user: root
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    volumes:
+      - ./spark/apps:/opt/spark-apps
+      - ./spark/data:/opt/spark-data
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    networks:
+      - mkadia-reco-net
+
+  # 🔥 Spark Worker 2
+  spark-worker-2:
+    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    container_name: spark-worker-2
+    user: root
+    environment:
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2G
+    depends_on:
+      spark-master:
+        condition: service_healthy
+    volumes:
+      - ./spark/apps:/opt/spark-apps
+      - ./spark/data:/opt/spark-data
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    networks:
+      - mkadia-reco-net
+
+  # 🐍 JupyterLab — PySpark compatible Spark 3.5.0
+  jupyter:
+    build:
+      context: ./jupyter  # dossier où se trouve ton Dockerfile
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_TOKEN=admin
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    volumes:
+      - ./spark:/home/jovyan/work
+    networks:
+      - mkadia-reco-net
+    depends_on:
+      - spark-master
+
+networks:
+  mkadia-reco-net:
+    driver: bridge
