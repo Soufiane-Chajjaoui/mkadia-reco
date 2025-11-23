@@ -1,0 +1,198 @@
+{
+  "categories": [
+    {
+      "name": "Produits Bio et Locaux",
+      "url": "bio-locals",
+      "id": 1
+    },
+    {
+      "name": "Fruits & Légumes",
+      "url": "fruits-legumes",
+      "id": 2
+    }
+  ],
+  "products": [
+    {
+      "name": "Tomates bio de Marrakech",
+      "description": "Jardilandes fraîches biologiques cultivées localement à Marrakech.",
+      "brand": null,
+      "origin": "Maroc",
+      "price": 18.0,
+      "stock": 235,
+      "unit": "KG",
+      "quantity": 2.0,
+      "status": "ACTIVE",
+      "is_new": false,
+      "is_featured": true,package fr.mkadia.mkadiaapi.dtos;
+
+      import lombok.AllArgsConstructor;
+      import lombok.Builder;
+      import lombok.Data;
+      import lombok.NoArgsConstructor;
+      
+      @Data
+      @Builder
+      @NoArgsConstructor
+      @AllArgsConstructor
+      public class ReviewEvent {
+          private String userId;
+          private String itemId;
+          private String comment;
+          private Double rating;
+          private Long timestamp;
+      }
+      
+      "discountPercentage": null,
+      "category_id": 1,
+      "sku": "SKU-001-0001",
+      "barcode": "9252425624229",
+      "slug": "tomates-bio-de-marrakech",
+      "metaTitle": "Tomates bio de Marrakech",
+      "metaDesc": "Jardilandes fraîches biologiques cultivées localement à Marrakech.",
+      "expirationDate": null,
+      "id": 1
+    },
+    {
+      "name": "Lait bio de laitier marocain",
+      "description": "Produit entièrement naturel et pasteurisé, provenant des fermes biologiques du Maroc.",
+      "brand": null,
+      "origin": "Maroc",
+      "price": 3.0,
+      "stock": 452,
+      "unit": "L",
+      "quantity": 1.0,
+      "status": "ACTIVE",
+      "is_new": true,
+      "is_featured": false,
+      "discountPercentage": null,
+      "category_id": 1,
+      "sku": "SKU-001-0002",
+      "barcode": "0255461820339",
+      "slug": "lait-bio-de-laitier-marocain",
+      "metaTitle": "Lait bio de laitier marocain",
+      "metaDesc": "Produit entièrement naturel et pasteurisé, provenant des fermes biologiques du Maroc.",
+      "expirationDate": null,
+      "id": 1
+    },
+    {
+      "name": "Produit Fruits & Légumes 1",
+      "description": "Description du produit 1",
+      "brand": "Coca-Cola",
+      "origin": "Maroc",
+      "price": 46.73,
+      "stock": 214,
+      "unit": "UNIT",
+      "quantity": 3.5,
+      "status": "INACTIVE",
+      "is_new": false,
+      "is_featured": false,
+      "discountPercentage": null,
+      "category_id": 2,
+      "sku": "SKU-002-0001",
+      "barcode": "0760949343932",
+      "slug": "fruits-l-gumes-1",
+      "metaTitle": "Produit 1",
+      "metaDesc": "Description produit 1",
+      "expirationDate": null,
+      "id": 3
+    },
+    {
+      "name": "Produit Fruits & Légumes 2",
+      "description": "Description du produit 2",
+      "brand": "Danone",
+      "origin": "France",
+      "price": 60.98,
+      "stock": 442,
+      "unit": "L",
+      "quantity": 1.0,
+      "status": "ACTIVE",
+      "is_new": true,
+      "is_featured": false,
+      "discountPercentage": null,
+      "category_id": 2,
+      "sku": "SKU-002-0002",
+      "barcode": "7185823906495",
+      "slug": "fruits-l-gumes-2",
+      "metaTitle": "Produit 2",
+      "metaDesc": "Description produit 2",
+      "expirationDate": null,
+      "id": 3
+    }
+  ],
+  "users": [
+    {
+      "firstName": "Ahmed",
+      "lastName": "Alaoui",
+      "email": "ahmed.alaoui@example.com",
+      "phone": "+212612345678",
+      "password": "$2a$10$dummy.hash.for.password",
+      "isUsing2FA": false,
+      "roles": [
+        {
+          "id": 2,
+          "label": "USER"
+        }
+      ],
+      "id": 1
+    },
+    {
+      "firstName": "Fatima",
+      "lastName": "Idrissi",
+      "email": "fatima.idrissi@example.com",
+      "phone": "+212934567867",
+      "password": "$2a$10$dummy.hash.for.password",
+      "isUsing2FA": false,
+      "roles": [
+        {
+          "id": 2,
+          "label": "USER"
+        }
+      ],
+      "id": 2
+    }
+  ],
+  "orders": [
+    {
+      "user_id": 2,
+      "subTotal": 488.36,
+      "discountAmount": 0,
+      "totalAmount": 488.36,
+      "status": "PROCESSING",
+      "items": [
+        {
+          "product_id": 1,
+          "quantity": 5,
+          "price": 18.0
+        },
+        {
+          "product_id": 3,
+          "quantity": 5,
+          "price": 60.98
+        },
+        {
+          "product_id": 3,
+          "quantity": 2,
+          "price": 46.73
+        }
+      ],
+      "created_at": "2025-09-10T15:29:03.402849",
+      "id": 1
+    },
+    {
+      "user_id": 1,
+      "subTotal": 243.92,
+      "discountAmount": 0,
+      "totalAmount": 243.92,
+      "status": "PROCESSING",
+      "items": [
+        {
+          "product_id": 3,
+          "quantity": 4,
+          "price": 60.98
+        }
+      ],
+      "created_at": "2025-08-18T15:29:03.405343",
+      "id": 2
+    }
+  ]
+}

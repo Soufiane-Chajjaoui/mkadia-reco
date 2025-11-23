@@ -1,18 +1,73 @@
+version: '3.9'
+
 services:
-  # 🔥 Apache Spark Master
+  # ========================
+  # 🐘 ZOOKEEPER
+  # ========================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - mkadia-reco-net
+
+  # ========================
+  # 🔥 KAFKA
+  # ========================
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - mkadia-reco-net
+
+  # ========================
+  # 🧭 Kafka UI
+  # ========================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: mkadia
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+    networks:
+      - mkadia-reco-net
+
+  # ========================
+  # 🔥 Spark Master
+  # ========================
   spark-master:
-    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    build:
+      context: ./spark
     container_name: spark-master
     user: root
     environment:
-      - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
-      - SPARK_MASTER_PORT=7077
-      - SPARK_MASTER_WEBUI_PORT=8080
     ports:
-      - "8081:8080"
-      - "7077:7077"
+      - "7077:7077"   # Spark Master
+      - "8081:8080"   # UI Master
     volumes:
+      - ./spark/custom-jars:/opt/spark/custom-jars
       - ./spark/apps:/opt/spark-apps
       - ./spark/data:/opt/spark-data
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -24,66 +79,56 @@ services:
       timeout: 10s
       retries: 3
 
+  # ========================
   # 🔥 Spark Worker 1
+  # ========================
   spark-worker-1:
-    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    build:
+      context: ./spark
     container_name: spark-worker-1
     user: root
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_MEMORY=4G
     depends_on:
       spark-master:
         condition: service_healthy
     volumes:
+      - ./spark/custom-jars:/opt/spark/custom-jars
       - ./spark/apps:/opt/spark-apps
       - ./spark/data:/opt/spark-data
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     networks:
       - mkadia-reco-net
 
+  # ========================
   # 🔥 Spark Worker 2
+  # ========================
   spark-worker-2:
-    image: apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
+    build:
+      context: ./spark
     container_name: spark-worker-2
     user: root
     environment:
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
       - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_MEMORY=4G
     depends_on:
       spark-master:
         condition: service_healthy
     volumes:
+      - ./spark/custom-jars:/opt/spark/custom-jars
       - ./spark/apps:/opt/spark-apps
       - ./spark/data:/opt/spark-data
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     networks:
       - mkadia-reco-net
-
-  # 🐍 JupyterLab — PySpark compatible Spark 3.5.0
-  jupyter:
-    build:
-      context: ./jupyter  # dossier où se trouve ton Dockerfile
-    container_name: jupyter
-    ports:
-      - "8888:8888"
-    environment:
-      - JUPYTER_TOKEN=admin
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
-    volumes:
-      - ./spark:/home/jovyan/work
-    networks:
-      - mkadia-reco-net
-    depends_on:
-      - spark-master
 
 networks:
   mkadia-reco-net:
     driver: bridge
+
+
