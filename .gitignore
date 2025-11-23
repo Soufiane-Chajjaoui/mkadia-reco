@@ -1,0 +1,9 @@
+# Virtual environments
+venv/
+*/venv/
+**venv/
+.venv/
+.venv*/
+env/
+ENV/
+data/venv/*
