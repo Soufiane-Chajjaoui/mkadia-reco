@@ -6,7 +6,7 @@ USER root
 
 # Installer PySpark et autres dépendances Python
 RUN pip install --upgrade pip
-RUN pip install pyspark==3.5.0
+RUN pip install pyspark==3.5.0 numpy pandas==1.5.3
 
 # Répertoire de travail
 WORKDIR /opt/spark
