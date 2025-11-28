@@ -30,9 +30,9 @@ __pycache__/
 Thumbs.db
 
 # Docker volumes (large model files - don't commit)
-spark/apps/model/bert_sequence_classification_multilingual_sentiment/
+spark/apps/model/bert_sequence_classification_multilingual_sentiment
 spark/apps/model/bert_spark_nlp/
-
+*/models/*
 # Temporary files
 *.tmp
 *.log

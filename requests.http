@@ -1,0 +1,16 @@
+### Get users
+GET http://localhost:8080/api/users
+
+### Create user
+POST http://localhost:8080/mkadia-api/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "schajjaoui2003@gmail.com",
+  "password": "Soufianch@2211"
+}
+
+### Add Favorite
+POST http://localhost:8080/mkadia-api/api/v1/favorites/2
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJmaXJzdE5hbWUiOiJzb3VmaWFuZSIsImxhc3ROYW1lIjoiY2hhamphb3VpIiwicm9sZXMiOlsiQURNSU4iLCJERUxJVkVSWSIsIlVTRVIiXSwiaWQiOjEsInN1YiI6InNjaGFqamFvdWkyMDAzQGdtYWlsLmNvbSIsImlhdCI6MTc2NDM2NDM0NCwiZXhwIjoxNzY0MzcxNTQ0fQ.9_Yfykw2WfbM6c3vBWZAdT1WWEcdOlagWTZeCJYiSOyeMSXaUKyOsCyrWBt1lTSP

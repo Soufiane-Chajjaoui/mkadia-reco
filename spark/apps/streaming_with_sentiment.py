@@ -12,16 +12,23 @@ Features:
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, lit, when, avg, count, udf, explode
 from pyspark.sql.types import *
-from pyspark.ml import PipelineModel
+from pyspark.ml import PipelineModel, Pipeline
 from pyspark.ml.recommendation import ALS
 from pyspark.ml.evaluation import RegressionEvaluator
 import pyspark.sql.functions as F
 import time
 
+try:
+    from sparknlp.annotator import BertForSequenceClassification, Tokenizer, DocumentAssembler
+    from sparknlp.base import LightPipeline
+    SPARKNLP_AVAILABLE = True
+except ImportError:
+    SPARKNLP_AVAILABLE = False
+
 # --- NEW CONFIGURATION ---
 # IMPORTANT: This path must point to your converted Hugging Face model 
 # saved in the Spark NLP format.
-HUGGINGFACE_SPARK_NLP_MODEL_PATH = "./model/final_bert_review_model" 
+HUGGINGFACE_SPARK_NLP_MODEL_PATH = "/opt/spark/models/bert_sequence_classifier_multilingual_sentiment" 
 # --- END NEW CONFIGURATION ---
 
 bootstrap = "kafka:29092"
@@ -38,47 +45,26 @@ spark = (
 spark.sparkContext.setLogLevel("WARN")
 
 # =====================================================
-# Check if topic exists
-# =====================================================
-def topic_exists(topic_name):
-    try:
-        sc = spark.sparkContext
-        props = sc._jvm.java.util.Properties()
-        props.put("bootstrap.servers", bootstrap)
-
-        AdminClient = sc._jvm.org.apache.kafka.clients.admin.AdminClient
-        client = AdminClient.create(props)
-
-        kafka_topics = client.listTopics().names().get()
-        client.close()
-
-        return topic_name in kafka_topics
-    except Exception as e:
-        print(f"❌ Error checking topic {topic_name}: {e}")
-        return False
-
-
-# =====================================================
 # Safe read from Kafka topic
 # =====================================================
 def safe_read_topic(topic, schema):
-    if not topic_exists(topic):
-        print(f"⚠️ WARNING: Topic '{topic}' does not exist → Stream ignored.")
+    try:
+        df = (
+            spark.readStream
+            .format("kafka")
+            .option("kafka.bootstrap.servers", bootstrap)
+            .option("subscribe", topic)
+            .option("startingOffsets", "latest")
+            .load()
+            .selectExpr("CAST(value AS STRING) AS json_str")
+            .select(from_json(col("json_str"), schema).alias("data"))
+            .select("data.*")
+        )
+        print(f"✅ Topic '{topic}' stream configured.")
+        return df
+    except Exception as e:
+        print(f"⚠️ WARNING: Could not configure topic '{topic}': {e}")
         return None
-
-    print(f"✅ Topic '{topic}' exists → Stream started.")
-    df = (
-        spark.readStream
-        .format("kafka")
-        .option("kafka.bootstrap.servers", bootstrap)
-        .option("subscribe", topic)
-        .option("startingOffsets", "latest")
-        .load()
-        .selectExpr("CAST(value AS STRING) AS json_str")
-        .select(from_json(col("json_str"), schema).alias("data"))
-        .select("data.*")
-    )
-    return df
 
 
 # =====================================================
@@ -137,15 +123,28 @@ class SentimentEnhancedRecommender:
         self.training_interval = 300  # 5 minutes
 
         # --- FIX: Load converted Spark NLP pipeline ---
-        if sentiment_model_path:
+        if sentiment_model_path and SPARKNLP_AVAILABLE:
             try:
-                # Assuming the converted HF model is wrapped in a minimal Spark NLP Pipeline 
-                # for text preprocessing (DocumentAssembler, Tokenizer, etc.) and classification.
-                self.sentiment_pipeline = PipelineModel.load(sentiment_model_path)
-                print("✅ Converted Spark NLP Sentiment pipeline loaded successfully.")
+                document_assembler = DocumentAssembler() \
+                    .setInputCol("comment") \
+                    .setOutputCol("document")
+                
+                tokenizer = Tokenizer() \
+                    .setInputCols(["document"]) \
+                    .setOutputCol("token")
+                
+                bert_model = BertForSequenceClassification.load(sentiment_model_path)
+                
+                self.sentiment_pipeline = Pipeline(
+                    stages=[document_assembler, tokenizer, bert_model]
+                ).fit(self.spark.createDataFrame([], StructType([])))
+                
+                print("✅ Spark-NLP BERT Sentiment pipeline loaded successfully.")
             except Exception as e:
                 print(f"⚠️ Could not load Spark NLP sentiment model from {sentiment_model_path}: {e}")
                 print("📝 Continuing without sentiment analysis...")
+        elif sentiment_model_path and not SPARKNLP_AVAILABLE:
+            print("⚠️ Spark-NLP not available. Sentiment analysis disabled.")
 
         # ALS configuration
         self.als = ALS(

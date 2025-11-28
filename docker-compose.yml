@@ -110,8 +110,9 @@ services:
       - "8081:8080"   # UI Master
     volumes:
       - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
+      - ./spark/apps:/opt/spark/apps
+      - ./spark/data:/opt/spark/data
+      - ./spark/models:/opt/spark/models
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,8 +145,9 @@ services:
         condition: service_healthy
     volumes:
       - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
+      - ./spark/apps:/opt/spark/apps
+      - ./spark/data:/opt/spark/data
+      - ./spark/models:/opt/spark/models
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     networks:
       - mkadia-reco-net
@@ -168,8 +170,9 @@ services:
         condition: service_healthy
     volumes:
       - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
+      - ./spark/apps:/opt/spark/apps
+      - ./spark/data:/opt/spark/data
+      - ./spark/models:/opt/spark/models
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     networks:
       - mkadia-reco-net
@@ -200,27 +203,19 @@ services:
     restart: always
 
   # ========================
-  # 🐝 Hive MetaStore (with PostgreSQL Backend)
+  # 🐝 Hive MetaStore (with Derby Backend)
   # ========================
   hive-metastore:
     image: apache/hive:4.0.0
     container_name: hive-metastore
     environment:
-      DB_DRIVER: postgres
       SERVICE_NAME: metastore
-      DB_HOST: postgres-reco
-      DB_PORT: 5432
-      DB_NAME: metastore
-      DB_USER: postgres
-      DB_PASSWD: soufianch
+      DB_DRIVER: derby
       HADOOP_HEAPSIZE: 2048
-      SKIP_SCHEMA_INIT: "true"
     ports:
       - "9083:9083"
-    depends_on:
-      postgres:
-        condition: service_healthy
     volumes:
+      - hive-metastore-data:/opt/hive/data
       - ./hive-warehouse:/user/hive/warehouse
     networks:
       - mkadia-reco-net
@@ -261,5 +256,6 @@ networks:
 volumes:
   postgres-reco-data:
   minio-reco-data:
+  hive-metastore-data:
 
 
