@@ -1,7 +1,48 @@
-# Docker Compose for mkadia-reco
-# Kafka + Spark Cluster Setup
+version: '3.9'
 
 services:
+  # ========================
+  # 🐘 POSTGRESQL
+  # ========================
+  postgres:
+    image: 'postgres:latest'
+    container_name: postgres-reco
+    environment:
+      - 'POSTGRES_DB=mkadia-db'
+      - 'POSTGRES_PASSWORD=soufianch'
+      - 'POSTGRES_USER=postgres'
+    ports:
+      - '5435:5432'
+    volumes:
+      - postgres-reco-data:/var/lib/postgresql/data
+      - ./hive-init-postgres.sql:/docker-entrypoint-initdb.d/01-hive-init.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mkadia-reco-net
+    restart: always
+
+  # ========================
+  # 🗃️ PGADMIN
+  # ========================
+  pgadmin-reco:
+    image: 'dpage/pgadmin4:latest'
+    container_name: pgadmin-reco
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: soufianch
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - '5051:5050'
+    networks:
+      - mkadia-reco-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ========================
   # 🐘 ZOOKEEPER
   # ========================
@@ -65,17 +106,22 @@ services:
     environment:
       - SPARK_MASTER_HOST=spark-master
     ports:
-      - "7077:7077" # Spark Master
-      - "8081:8080" # UI Master
+      - "7077:7077"   # Spark Master
+      - "8081:8080"   # UI Master
     volumes:
       - ./spark/custom-jars:/opt/spark/custom-jars
       - ./spark/apps:/opt/spark-apps
       - ./spark/data:/opt/spark-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     networks:
       - mkadia-reco-net
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,6 +174,92 @@ services:
     networks:
       - mkadia-reco-net
 
+  # ========================
+  # 📦 MinIO (Object Storage)
+  # ========================
+  minio-reco:
+    image: minio/minio:latest
+    container_name: minio-reco
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9021
+    ports:
+      - "9020:9000"  # API port
+      - "9021:9001"  # Console port
+    volumes:
+      - minio-reco-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - mkadia-reco-net
+    restart: always
+
+  # ========================
+  # 🐝 Hive MetaStore (with PostgreSQL Backend)
+  # ========================
+  hive-metastore:
+    image: apache/hive:4.0.0
+    container_name: hive-metastore
+    environment:
+      DB_DRIVER: postgres
+      SERVICE_NAME: metastore
+      DB_HOST: postgres-reco
+      DB_PORT: 5432
+      DB_NAME: metastore
+      DB_USER: postgres
+      DB_PASSWD: soufianch
+      HADOOP_HEAPSIZE: 2048
+      SKIP_SCHEMA_INIT: "true"
+    ports:
+      - "9083:9083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./hive-warehouse:/user/hive/warehouse
+    networks:
+      - mkadia-reco-net
+    restart: always
+
+  # ========================
+  # 🧊 Iceberg REST Catalog
+  # ========================
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: iceberg-rest
+    ports:
+      - "8084:8080"
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_S3_ENDPOINT: http://minio-reco:9000
+      WAREHOUSE_PATH: s3://mkadia-warehouse
+      S3_ENDPOINT: http://minio-reco:9000
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+    depends_on:
+      minio-reco:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mkadia-reco-net
+    restart: always
+
 networks:
   mkadia-reco-net:
     driver: bridge
+
+volumes:
+  postgres-reco-data:
+  minio-reco-data:
+
+
