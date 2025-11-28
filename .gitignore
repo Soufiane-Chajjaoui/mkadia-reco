@@ -7,3 +7,40 @@ venv/
 env/
 ENV/
 data/venv/*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (large model files - don't commit)
+spark/apps/model/bert_sequence_classification_multilingual_sentiment/
+spark/apps/model/bert_spark_nlp/
+
+# Temporary files
+*.tmp
+*.log
+commands.txt
+test-packages.ps1
+run-nlp-test.ps1
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

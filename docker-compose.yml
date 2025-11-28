@@ -1,4 +1,5 @@
-version: '3.9'
+# Docker Compose for mkadia-reco
+# Kafka + Spark Cluster Setup
 
 services:
   # ========================
@@ -64,8 +65,8 @@ services:
     environment:
       - SPARK_MASTER_HOST=spark-master
     ports:
-      - "7077:7077"   # Spark Master
-      - "8081:8080"   # UI Master
+      - "7077:7077" # Spark Master
+      - "8081:8080" # UI Master
     volumes:
       - ./spark/custom-jars:/opt/spark/custom-jars
       - ./spark/apps:/opt/spark-apps
@@ -74,7 +75,7 @@ services:
     networks:
       - mkadia-reco-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -130,5 +131,3 @@ services:
 networks:
   mkadia-reco-net:
     driver: bridge
-
-
