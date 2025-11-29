@@ -2,48 +2,6 @@ version: '3.9'
 
 services:
   # ========================
-  # 🐘 POSTGRESQL
-  # ========================
-  postgres:
-    image: 'postgres:latest'
-    container_name: postgres-reco
-    environment:
-      - 'POSTGRES_DB=mkadia-db'
-      - 'POSTGRES_PASSWORD=soufianch'
-      - 'POSTGRES_USER=postgres'
-    ports:
-      - '5435:5432'
-    volumes:
-      - postgres-reco-data:/var/lib/postgresql/data
-      - ./hive-init-postgres.sql:/docker-entrypoint-initdb.d/01-hive-init.sql
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - mkadia-reco-net
-    restart: always
-
-  # ========================
-  # 🗃️ PGADMIN
-  # ========================
-  pgadmin-reco:
-    image: 'dpage/pgadmin4:latest'
-    container_name: pgadmin-reco
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: soufianch
-      PGADMIN_LISTEN_PORT: 5050
-    ports:
-      - '5051:5050'
-    networks:
-      - mkadia-reco-net
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # ========================
   # 🐘 ZOOKEEPER
   # ========================
   zookeeper:
@@ -114,8 +72,6 @@ services:
       - ./spark/data:/opt/spark/data
       - ./spark/models:/opt/spark/models
     depends_on:
-      postgres:
-        condition: service_healthy
       kafka:
         condition: service_started
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
@@ -203,20 +159,23 @@ services:
     restart: always
 
   # ========================
-  # 🐝 Hive MetaStore (with Derby Backend)
+  # 🐝 Hive MetaStore (with PostgreSQL Backend)
   # ========================
   hive-metastore:
-    image: apache/hive:4.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile.hive
     container_name: hive-metastore
     environment:
       SERVICE_NAME: metastore
-      DB_DRIVER: derby
+      DB_DRIVER: postgres
       HADOOP_HEAPSIZE: 2048
     ports:
       - "9083:9083"
     volumes:
       - hive-metastore-data:/opt/hive/data
       - ./hive-warehouse:/user/hive/warehouse
+      - ./hive-site.xml:/opt/hive/conf/hive-site.xml:ro
     networks:
       - mkadia-reco-net
     restart: always
@@ -254,7 +213,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-reco-data:
   minio-reco-data:
   hive-metastore-data:
 
