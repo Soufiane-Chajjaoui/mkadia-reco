@@ -1,12 +1,16 @@
+### Get users
+GET http://localhost:8080/api/users
+
+### Create user
 POST http://localhost:8080/mkadia-api/api/v1/auth/login
 Content-Type: application/json
-Accept: application/json
 
 {
-    "email": "schajjaoui2003@gmail.com",
-    "password": "Soufianch@2211"
+  "email": "schajjaoui2003@gmail.com",
+  "password": "Soufianch@2211"
 }
 
-
-###
-GET http://localhost:19120/api/v1
+### Add Favorite
+POST http://localhost:8080/mkadia-api/api/v1/favorites/4
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJmaXJzdE5hbWUiOiJzb3VmaWFuZSIsImxhc3ROYW1lIjoiY2hhamphb3VpIiwicm9sZXMiOlsiQURNSU4iLCJERUxJVkVSWSIsIlVTRVIiXSwiaWQiOjEsInN1YiI6InNjaGFqamFvdWkyMDAzQGdtYWlsLmNvbSIsImlhdCI6MTc2NDQxNzA5MCwiZXhwIjoxNzY0NDI0MjkwfQ.PVcmSN0rkIA2X2iySRFmT15q2TGT4JXTGJmzjfoDx-LIHr2Z5nDblAvANzjQQMJM
