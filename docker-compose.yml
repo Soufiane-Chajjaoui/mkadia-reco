@@ -1,8 +1,7 @@
-version: '3.9'
-
+name: mkadia-reco
 services:
   # ============================================
-  # 🐘 Zookeeper
+  # Zookeeper
   # ============================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
@@ -16,7 +15,7 @@ services:
       - mkadia-net
 
   # ============================================
-  # 🔥 Kafka
+  # Kafka
   # ============================================
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -38,12 +37,30 @@ services:
       - mkadia-net
 
   # ============================================
-  # 🔥 Spark Master + 2 Workers
+  # Kafka UI
+  # ============================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: mkadia
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+    networks:
+      - mkadia-net
+
+  # ============================================
+  # Spark Master + Workers
   # ============================================
   spark-master:
     build:
       context: ./spark
     container_name: spark-master
+    volumes:
+      - ./spark/apps:/opt/spark/apps
     environment:
       SPARK_MASTER_HOST: spark-master
     ports:
@@ -56,8 +73,11 @@ services:
     build:
       context: ./spark
     container_name: spark-worker-1
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     depends_on:
       - spark-master
+    volumes:
+      - ./spark/apps:/opt/spark/apps
     environment:
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_CORES: 2
@@ -69,8 +89,11 @@ services:
     build:
       context: ./spark
     container_name: spark-worker-2
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
     depends_on:
       - spark-master
+    volumes:
+      - ./spark/apps:/opt/spark/apps
     environment:
       SPARK_MASTER_URL: spark://spark-master:7077
       SPARK_WORKER_CORES: 2
@@ -79,7 +102,7 @@ services:
       - mkadia-net
 
   # ============================================
-  # 🧊 Iceberg + Nessie Catalog
+  # Iceberg + Nessie
   # ============================================
   nessie:
     image: projectnessie/nessie:latest
@@ -94,18 +117,22 @@ services:
     container_name: iceberg-rest
     depends_on:
       - nessie
-      - minio  # utiliser MinIO existant
     ports:
       - "8181:8181"
     environment:
-      CATALOG_WAREHOUSE: s3://mkadia-objects
-      CATALOG_S3_ENDPOINT: http://mkadia-api-minio:9000
+      # Utiliser le MinIO partagé
+      CATALOG_WAREHOUSE: s3://mkadia-lakehouse
+      CATALOG_S3_ENDPOINT: http://minio:9000
       CATALOG_S3_ACCESS_KEY: minioadmin
       CATALOG_S3_SECRET_KEY: minioadmin
       CATALOG_CATALOG__URI: http://nessie:19120/api/v2
     networks:
       - mkadia-net
 
+# ============================================
+# Réseau externe partagé
+# ============================================
 networks:
   mkadia-net:
     external: true
+
