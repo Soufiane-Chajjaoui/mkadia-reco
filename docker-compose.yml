@@ -1,10 +1,9 @@
-# Docker Compose for mkadia-reco
-# Kafka + Spark Cluster Setup
+version: '3.9'
 
 services:
-  # ========================
-  # 🐘 ZOOKEEPER
-  # ========================
+  # ============================================
+  # 🐘 Zookeeper
+  # ============================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
@@ -14,11 +13,11 @@ services:
     ports:
       - "2181:2181"
     networks:
-      - mkadia-reco-net
+      - mkadia-net
 
-  # ========================
-  # 🔥 KAFKA
-  # ========================
+  # ============================================
+  # 🔥 Kafka
+  # ============================================
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: kafka
@@ -31,103 +30,82 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
-      - mkadia-reco-net
+      - mkadia-net
 
-  # ========================
-  # 🧭 Kafka UI
-  # ========================
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "8085:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: mkadia
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-    depends_on:
-      - kafka
-    networks:
-      - mkadia-reco-net
-
-  # ========================
-  # 🔥 Spark Master
-  # ========================
+  # ============================================
+  # 🔥 Spark Master + 2 Workers
+  # ============================================
   spark-master:
     build:
       context: ./spark
     container_name: spark-master
-    user: root
     environment:
-      - SPARK_MASTER_HOST=spark-master
+      SPARK_MASTER_HOST: spark-master
     ports:
-      - "7077:7077" # Spark Master
-      - "8081:8080" # UI Master
-    volumes:
-      - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      - "7077:7077"
+      - "8081:8080"
     networks:
-      - mkadia-reco-net
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - mkadia-net
 
-  # ========================
-  # 🔥 Spark Worker 1
-  # ========================
   spark-worker-1:
     build:
       context: ./spark
     container_name: spark-worker-1
-    user: root
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=4G
     depends_on:
-      spark-master:
-        condition: service_healthy
-    volumes:
-      - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      - spark-master
+    environment:
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 4G
     networks:
-      - mkadia-reco-net
+      - mkadia-net
 
-  # ========================
-  # 🔥 Spark Worker 2
-  # ========================
   spark-worker-2:
     build:
       context: ./spark
     container_name: spark-worker-2
-    user: root
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=2
-      - SPARK_WORKER_MEMORY=4G
     depends_on:
-      spark-master:
-        condition: service_healthy
-    volumes:
-      - ./spark/custom-jars:/opt/spark/custom-jars
-      - ./spark/apps:/opt/spark-apps
-      - ./spark/data:/opt/spark-data
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      - spark-master
+    environment:
+      SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 4G
     networks:
-      - mkadia-reco-net
+      - mkadia-net
+
+  # ============================================
+  # 🧊 Iceberg + Nessie Catalog
+  # ============================================
+  nessie:
+    image: projectnessie/nessie:latest
+    container_name: nessie
+    ports:
+      - "19120:19120"
+    networks:
+      - mkadia-net
+
+  iceberg-rest:
+    image: tabulario/iceberg-rest:latest
+    container_name: iceberg-rest
+    depends_on:
+      - nessie
+      - minio  # utiliser MinIO existant
+    ports:
+      - "8181:8181"
+    environment:
+      CATALOG_WAREHOUSE: s3://mkadia-objects
+      CATALOG_S3_ENDPOINT: http://mkadia-api-minio:9000
+      CATALOG_S3_ACCESS_KEY: minioadmin
+      CATALOG_S3_SECRET_KEY: minioadmin
+      CATALOG_CATALOG__URI: http://nessie:19120/api/v2
+    networks:
+      - mkadia-net
 
 networks:
-  mkadia-reco-net:
-    driver: bridge
+  mkadia-net:
+    external: true

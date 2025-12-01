@@ -47,7 +47,7 @@ class SentimentClassifier:
             # Load pre-trained model from local path
             # The user downloaded it to spark/apps/model/bert_sequence_classification_multilingual_sentiment
             # mapped to /opt/spark-apps/model/bert_sequence_classification_multilingual_sentiment in Docker
-            LOCAL_MODEL_PATH = "/opt/spark-apps/model/bert_sequence_classification_multilingual_sentiment"
+            LOCAL_MODEL_PATH = "/opt/spark/models/bert_sequence_classifier_multilingual_sentiment"
             
             print(f"📂 Loading model from local path: {LOCAL_MODEL_PATH}")
             

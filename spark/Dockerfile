@@ -1,25 +1,20 @@
-# Image officielle Spark 3.5.0 avec Python et Java 11
-# This image already includes PySpark 3.5.0!
+# Image officielle Spark 3.5.0 avec Python & Java 11
 FROM apache/spark:3.5.0-scala2.12-java11-python3-ubuntu
 
-# Utilisateur root pour les installations
 USER root
 
-# Set environment variables for PySpark
-ENV SPARK_HOME=/opt/spark
-ENV PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
-ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH
+# Install Python libs
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir psycopg2-binary boto3 numpy pandas pyarrow kafka-python
 
-# Increase pip timeout and install Python packages
-# Note: PySpark is already included in the base image at $SPARK_HOME/python
-RUN pip install --upgrade pip && \
-    pip install --default-timeout=1000 \
-    numpy \
-    pandas>=2.0.0 \
-    spark-nlp==5.1.4
-
-# Répertoire de travail
+# Workdir
 WORKDIR /opt/spark
 
-# Par défaut, ouvrir un shell (override dans docker-compose)
+# PostgreSQL JDBC
+RUN mkdir -p /opt/spark/jars/extra && \
+    curl -fsSL -o /opt/spark/jars/extra/postgresql-42.6.0.jar \
+    https://repo1.maven.org/maven2/org/postgresql/postgresql/42.6.0/postgresql-42.6.0.jar
+
+ENV SPARK_CLASSPATH="/opt/spark/jars/extra/*"
+
 CMD ["/bin/bash"]
