@@ -2,7 +2,7 @@
 <configuration>
   <property>
     <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:postgresql://192.168.1.105:5432/metastore-db</value>
+    <value>jdbc:postgresql://10.126.145.208:5432/metastore-db</value>
   </property>
 
   <property>

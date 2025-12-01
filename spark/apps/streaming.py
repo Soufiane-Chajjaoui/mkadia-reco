@@ -22,20 +22,21 @@ import socket
 import subprocess
 import boto3
 import json
+import pandas as pd
 from io import BytesIO
 
 bootstrap = "kafka:29092"
 kafka_host = "kafka"
 kafka_port = "9092"
 postgres_config = {
-    "host": "192.168.1.105",
+    "host": "10.126.145.208",
     "port": 5432,
     "user": "postgres",
     "password": "soufianch",
     "database": "mkadia-db"
 }
 minio_config = {
-    "endpoint": "192.168.1.105:9000",
+    "endpoint": "10.126.145.208:9000",
     "access_key": "minioadmin",
     "secret_key": "minioadmin",
     "bucket": "mkadia-objects"
@@ -312,12 +313,27 @@ class Recommender:
         except Exception as e:
             print(f"❌ Error storing recommendations for user {user_id}: {e}")
 
-    def store_recommendations_minio(self, user_id, recommendations, batch_id):
-        """Stocker les recommandations dans MinIO en JSON"""
+    def store_recommendations_parquet_minio(self, user_id, recommendations, batch_id):
+        """Stocker les recommandations Parquet dans MinIO"""
         if not recommendations:
             return
         
         try:
+            data = {
+                "user_id": [user_id] * len(recommendations),
+                "item_id": [int(item_id) for item_id, score in recommendations],
+                "score": [float(score) for item_id, score in recommendations],
+                "rank": list(range(1, len(recommendations) + 1)),
+                "batch_id": [batch_id] * len(recommendations),
+                "timestamp": [datetime.now().isoformat()] * len(recommendations)
+            }
+            
+            df_pandas = pd.DataFrame(data)
+            
+            buffer = BytesIO()
+            df_pandas.to_parquet(buffer, index=False, compression='snappy')
+            buffer.seek(0)
+            
             s3_client = boto3.client(
                 's3',
                 endpoint_url=f"http://{minio_config['endpoint']}",
@@ -327,36 +343,21 @@ class Recommender:
             )
             
             bucket = minio_config['bucket']
-            
             try:
                 s3_client.head_bucket(Bucket=bucket)
-                print(f"✅ Bucket '{bucket}' existe")
             except Exception:
-                print(f"📦 Création du bucket '{bucket}'...")
                 s3_client.create_bucket(Bucket=bucket)
             
-            data = [
-                {
-                    "user_id": user_id,
-                    "item_id": int(item_id),
-                    "score": float(score),
-                    "rank": rank,
-                    "batch_id": batch_id,
-                    "timestamp": datetime.now().isoformat()
-                }
-                for rank, (item_id, score) in enumerate(recommendations, 1)
-            ]
-            
-            key = f"recommendations/batch_{batch_id}/user_{user_id}.json"
+            key = f"recommendations/batch_{batch_id}/user_{user_id}.parquet"
             s3_client.put_object(
                 Bucket=bucket,
                 Key=key,
-                Body=json.dumps(data)
+                Body=buffer.getvalue()
             )
             
-            print(f"💾 {len(recommendations)} recommandations stockées pour l'utilisateur {user_id} dans MinIO ({key})")
+            print(f"📦 MinIO Parquet: {key}")
         except Exception as e:
-            print(f"❌ Erreur MinIO utilisateur {user_id}: {str(e)}")
+            print(f"❌ Erreur MinIO user {user_id}: {str(e)}")
 
     def create_hive_table_if_not_exists(self):
         """Create Hive table for recommendations"""
@@ -469,7 +470,7 @@ def process_batch(batch_df, batch_id):
                         recommendations = recommender.generate_recommendations(uid, 5)
                         recommender.display_recommendations(uid, recommendations)
                         recommender.store_recommendations_postgres(uid, recommendations)
-                        recommender.store_recommendations_minio(uid, recommendations, batch_id)
+                        recommender.store_recommendations_parquet_minio(uid, recommendations, batch_id)
                     except Exception as e:
                         print(f"❌ Erreur pour l'utilisateur {uid}: {e}")
 
