@@ -1,0 +1,13 @@
+# Airflow will ignore files matching the patterns below
+__pycache__
+*.pyc
+*.pid
+*.egg-info
+.git
+.gitignore
+.pytest_cache
+.venv
+venv/
+*.swp
+*.swo
+*.swn

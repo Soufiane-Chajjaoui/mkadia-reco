@@ -102,7 +102,7 @@ spark = (
     SparkSession.builder
     .appName("Recommendations")
     .config("spark.sql.parquet.compression.codec", "snappy")
-    .getOrCreate()
+    .getOrCreate()iceberg
 )
 spark.sparkContext.setLogLevel("WARN")
 
@@ -182,8 +182,8 @@ class Recommender:
         self.als = ALS(
             maxIter=10,
             regParam=0.1,
-            userCol="userId",
-            itemCol="itemId",
+            userCol="user_id",
+            itemCol="item_id",
             ratingCol="rating",
             coldStartStrategy="drop",
             implicitPrefs=True,
@@ -194,32 +194,32 @@ class Recommender:
         """Normalize interactions to common format"""
         if interaction_type == "review":
             return df.select(
-                col("userId").cast("int").alias("userId"),
-                col("itemId").cast("int").alias("itemId"),
+                col("userId").cast("int").alias("user_id"),
+                col("itemId").cast("int").alias("item_id"),
                 col("rating").cast("double").alias("rating"),
                 col("timestamp"),
                 lit(interaction_type).alias("interaction_type")
             )
         elif interaction_type == "favorite":
             return df.select(
-                col("userId").cast("int").alias("userId"),
-                col("productId").cast("int").alias("itemId"),
+                col("userId").cast("int").alias("user_id"),
+                col("productId").cast("int").alias("item_id"),
                 lit(4.0).alias("rating"),
                 col("timestamp"),
                 lit(interaction_type).alias("interaction_type")
             )
         elif interaction_type == "cart":
             return df.select(
-                col("userId").cast("int").alias("userId"),
-                col("productId").cast("int").alias("itemId"),
+                col("userId").cast("int").alias("user_id"),
+                col("productId").cast("int").alias("item_id"),
                 lit(3.0).alias("rating"),
                 col("timestamp"),
                 lit(interaction_type).alias("interaction_type")
             )
         elif interaction_type == "order":
             return df.select(
-                col("userId").cast("int").alias("userId"),
-                F.explode(col("productIds").cast("array<int>")).alias("itemId"),
+                col("userId").cast("int").alias("user_id"),
+                F.explode(col("productIds").cast("array<int>")).alias("item_id"),
                 lit(5.0).alias("rating"),
                 col("timestamp"),
                 lit(interaction_type).alias("interaction_type")
@@ -358,25 +358,6 @@ class Recommender:
             print(f"📦 MinIO Parquet: {key}")
         except Exception as e:
             print(f"❌ Erreur MinIO user {user_id}: {str(e)}")
-
-    def create_hive_table_if_not_exists(self):
-        """Create Hive table for recommendations"""
-        try:
-            self.spark.sql("""
-                CREATE TABLE IF NOT EXISTS recommendations_hive (
-                    user_id INT,
-                    item_id INT,
-                    score DOUBLE,
-                    rank INT,
-                    batch_id LONG,
-                    timestamp TIMESTAMP
-                )
-                USING PARQUET
-                LOCATION 's3a://mkadia-objects/recommendations/'
-            """)
-            print("✅ Hive table created")
-        except Exception as e:
-            print(f"⚠️ Could not create Hive table: {e}")
 
     def display_recommendations(self, user_id, recommendations):
         """Display recommendations"""

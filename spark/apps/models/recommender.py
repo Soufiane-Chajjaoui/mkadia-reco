@@ -213,11 +213,19 @@ class Recommender:
             return
 
         try:
+            # ✅ AJOUTEZ CETTE LIGNE : Renommer les colonnes
+            interactions_df = interactions_df \
+                .withColumnRenamed("userId", "user_id") \
+                .withColumnRenamed("itemId", "item_id")
+            
             df_with_timestamp = interactions_df.withColumn(
                 "created_at",
                 lit(datetime.now()).cast("timestamp")
             )
 
+            log.info(df_with_timestamp.columns)
+            df_with_timestamp.show(5, truncate=False)
+            
             df_with_timestamp.write \
                 .mode("append") \
                 .option("iceberg.write.update.mode", "merge") \

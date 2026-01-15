@@ -44,3 +44,18 @@ run-nlp-test.ps1
 *.egg-info/
 dist/
 build/
+
+
+# Airflow will ignore files matching the patterns below
+__pycache__
+*.pyc
+*.pid
+*.egg-info
+.git
+.gitignore
+.pytest_cache
+.venv
+airflow/venv/
+*.swp
+*.swo
+*.swn
