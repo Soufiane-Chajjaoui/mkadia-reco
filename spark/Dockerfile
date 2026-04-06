@@ -12,7 +12,7 @@ ENV SPARK_COMPILATION_VERSION=3.5
 RUN mkdir -p /opt/spark/jars/lakehouse /opt/spark/jars/extra
 
 # --------------------------
-# Iceberg Spark runtime
+# Iceberg Spark runtime service
 # --------------------------
 RUN curl -fSL --retry 5 --retry-delay 5 --retry-max-time 300 \
   "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-${SPARK_COMPILATION_VERSION}_${SCALA_VERSION}/${ICEBERG_VERSION}/iceberg-spark-runtime-${SPARK_COMPILATION_VERSION}_${SCALA_VERSION}-${ICEBERG_VERSION}.jar" \
