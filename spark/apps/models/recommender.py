@@ -1,4 +1,4 @@
-"""Recommendation engine using ALS model"""
+"""Recommendation engine using ALS model test branch"""
 
 import time
 import psycopg2
